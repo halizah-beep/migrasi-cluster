@@ -2,5 +2,5 @@ numpy
 pandas==2.2.3
 sklearn
 streamlit
-matplotlib==3.10.0
+matplotlib==3.7.1
 seaborn==0.13.2
