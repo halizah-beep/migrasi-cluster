@@ -91,7 +91,7 @@ st.title("Aplikasi Pemetaan Migrasi Penduduk Menggunakan Clustering K-Means")
 if menu == "Home":
     st.header("Migrasi Penduduk Kota Bekasi Tahun 2022 - 2023")
 
-    st.image("C:/Users/ARBAI KYB/Downloads/clustering_migrasi/migrasi.jpg", use_container_width=True)
+    st.image("migrasi.jpg", use_container_width=True)
     
     st.subheader("Pengertian Migrasi")
     st.markdown("""
