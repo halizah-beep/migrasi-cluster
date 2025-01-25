@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import MinMaxScaler
 import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
 
 dfmgr = pd.read_csv('migrasi_kota_bekasi.csv')
 X = pd.read_csv('output_cluster.csv')
@@ -91,7 +93,7 @@ st.title("Aplikasi Pemetaan Migrasi Penduduk Menggunakan Clustering K-Means")
 if menu == "Home":
     st.header("Migrasi Penduduk Kota Bekasi Tahun 2022 - 2023")
 
-    st.image("migrasi.jpg", use_container_width=True)
+    st.image('migrasi.jpg', use_container_width=True)
     
     st.subheader("Pengertian Migrasi")
     st.markdown("""
@@ -121,7 +123,7 @@ if menu == "Home":
     
             fig, ax = plt.subplots(figsize=(5, 2))
             sns.heatmap(
-                data_kelurahan.iloc[:, 1:],  # Kolom numerik migrasi
+                data_kelurahan.iloc[:, 1:],  
                 annot=True,
                 fmt="d",
                 cmap="coolwarm",
@@ -135,33 +137,67 @@ if menu == "Home":
     st.subheader("Dataset Migrasi Kota Bekasi (2022 - 2023)")
     st.write(dfmgr)
 
-    if dfmgr is not None:  # Memastikan data tersedia
+    if dfmgr is not None:  
+        if 'nama_desa_kelurahan' not in dfmgr.columns or 'total_migrasi_masuk' not in dfmgr.columns or 'total_migrasi_keluar' not in dfmgr.columns:
+            st.error("Dataset tidak memiliki kolom yang sesuai. Harap periksa dataset Anda.")
+        else:
             dfmgr.set_index('nama_desa_kelurahan', inplace=True)
-            if not all(dfmgr.dtypes == 'int64') and not all(dfmgr.dtypes == 'float64'):
-                st.error("Data heatmap harus numerik. Harap periksa dataset Anda.")
-            else:
-                st.subheader("Migrasi Masuk dan Keluar per Kelurahan Kota Bekasi (2022 - 2023)")
-            fig_heatmap, ax_heatmap = plt.subplots(figsize=(10, 6))
-            sns.heatmap(
-                dfmgr,  
-                fmt="d",  
-                cmap="coolwarm",  
-                linewidths=0.5, 
-                linecolor='gray', 
-                cbar_kws={"label": "Jumlah Migrasi"}  
+
+        # Memastikan data numerik
+        if not (dfmgr['total_migrasi_masuk'].dtype in ['int64', 'float64'] and 
+                dfmgr['total_migrasi_keluar'].dtype in ['int64', 'float64']):
+            st.error("Data heatmap harus numerik. Harap periksa dataset Anda.")
+        else:
+            st.subheader("Migrasi Masuk dan Keluar per Kelurahan Kota Bekasi (2022 - 2023)")
+
+            # Mengurutkan data berdasarkan total migrasi masuk
+            dfmgr_sorted = dfmgr.sort_values(by='total_migrasi_masuk', ascending=False)
+
+            # Menentukan ukuran figure dan axis
+            fig_bar, ax_bar = plt.subplots(figsize=(10, len(dfmgr_sorted) / 2))
+
+            # Membuat bar chart horizontal
+            ax_bar.barh(
+                dfmgr_sorted.index,  
+                dfmgr_sorted['total_migrasi_masuk'],  
+                color='#6a0dad', label='Migrasi Masuk'
             )
-            ax_heatmap.set_xlabel("Jenis Migrasi", fontsize=12)
-            ax_heatmap.set_ylabel("Kelurahan", fontsize=12)
-            st.pyplot(fig_heatmap)
+            ax_bar.barh(
+                dfmgr_sorted.index,  
+                -dfmgr_sorted['total_migrasi_keluar'],  
+                color='#d8a7d0', label='Migrasi Keluar'
+            )
+
+            # Menambahkan angka pada bar
+            for idx, row in dfmgr_sorted.iterrows():
+                ax_bar.text(
+                    row['total_migrasi_masuk'] / 2, idx, f"{row['total_migrasi_masuk']}",
+                    va='center', ha='center', fontsize=10, color='white'
+                )
+                ax_bar.text(
+                    -row['total_migrasi_keluar'] / 2, idx, f"{row['total_migrasi_keluar']}",
+                    va='center', ha='center', fontsize=10, color='black'
+                )
+
+            # Menyesuaikan label sumbu
+            ax_bar.set_xlabel("Jumlah Migrasi", fontsize=12)
+            ax_bar.set_ylabel("Kelurahan", fontsize=12)
+
+            # Menambahkan grid dan garis vertikal untuk sumbu nol
+            ax_bar.axvline(0, color='black', linewidth=0.8)
+            ax_bar.legend()
+
+            # Menampilkan plot di Streamlit
+            st.pyplot(fig_bar)
 
             st.markdown("""
             Grafik diatas menunjukkan **distribusi migrasi masuk dan keluar** di berbagai wilayah kelurahan **Kota Bekasi** selama **2022-2023**. 
-            Warna biru hingga merah mencerminkan jumlah migrasi, dengan **merah** menunjukkan **migrasi yang tinggi**. 
-            Sebagian besar wilayah memiliki migrasi masuk dan keluar yang seimbang, namun beberapa wilayah, seperti Jakasampurna, menunjukkan migrasi keluar yang sangat tinggi. 
+            Warna ungu tua dan ungu muda mencerminkan perkembangan jumlah migrasi, dengan **warna ungu tua** menunjukkan **angka migrasi masuk** sedangkan **warna ungu muda** menunjukkan **angka migrasi keluar**. 
+            Sebagian besar wilayah memiliki migrasi masuk dan keluar yang seimbang, namun beberapa wilayah, seperti Kaliabang Tengah, menunjukkan migrasi keluar yang sangat tinggi. 
             Perbedaan pola migrasi ini memberikan wawasan penting untuk perencanaan kota, terutama dalam penyediaan fasilitas publik dan analisis ketimpangan antarwilayah.
             """) 
        
-    st.text("")  # Menambahkan baris kosong
+    st.text("")  
 
     col1, col2 = st.columns(2)
     with col1:    
@@ -187,15 +223,71 @@ if menu == "Home":
 
     st.subheader("Cluster Data Migrasi Kota Bekasi (2022 - 2023)")
     st.write(X)
+
+    X.reset_index(drop=True, inplace=True)
+
+    # Transformasi dataset agar sesuai untuk visualisasi
+    X_melted = X.melt(
+        id_vars=['Kelurahan', 'cluster', 'keterangan'],  
+        value_vars=['Migrasi_Masuk', 'Migrasi_Keluar'],  
+        var_name='Jenis Migrasi',  
+        value_name='Jumlah Migrasi'  
+    )
+
+    # Membuat area chart dengan Plotly
+    fig_area = px.area(
+        X_melted,  
+        x='Kelurahan',  
+        y='Jumlah Migrasi',  
+        color='Jenis Migrasi',  
+        hover_data={  
+            'Kelurahan': True,
+            'Jumlah Migrasi': ':,',  
+            'Jenis Migrasi': False,  
+            'cluster': True,  
+            'keterangan': True  
+        },
+        labels={
+            'Jumlah Migrasi': 'Jumlah Migrasi',
+            'Jenis Migrasi': 'Jenis Migrasi',
+            'Kelurahan': 'Kelurahan'
+        },
+    )
+
+    # Kustomisasi tampilan
+    fig_area.update_layout(
+        title={
+            'text': "",
+            'x': 0.5,  
+            'xanchor': 'center',
+            'yanchor': 'top'
+        },
+        xaxis_title="Kelurahan",
+        yaxis_title="Jumlah Migrasi",
+        legend_title="Jenis Migrasi",
+        font=dict(family="Arial, sans-serif", size=12),
+        plot_bgcolor="#f9f9f9",  
+        hovermode="x unified",  
+        margin=dict(l=40, r=40, t=40, b=40) 
+    )
+
+    # Tambahkan grid agar lebih mudah dibaca
+    fig_area.update_xaxes(showgrid=True, gridcolor="#eaeaea")
+    fig_area.update_yaxes(showgrid=True, gridcolor="#eaeaea")
+
+    # Menampilkan visualisasi di Streamlit
+    st.plotly_chart(fig_area, use_container_width=True)
+
     st.markdown("""
-            Berdasarkan hasil analisis cluster terhadap data migrasi **Kota Bekasi** tahun **2022-2023**, terdapat pembagian wilayah ke dalam dua cluster utama, yaitu cluster 0 dengan keterangan **"Peningkatan"** dan cluster 1 dengan keterangan **"Penurunan"**. 
+            Berdasarkan hasil analisis cluster terhadap data migrasi **Kota Bekasi** tahun **2022-2023**, terdapat pembagian wilayah ke dalam dua cluster utama, yaitu cluster 0 dengan keterangan **"Penurunan"** dan cluster 1 dengan keterangan **"Peningkatan"**. 
             Wilayah dengan cluster **"Peningkatan"** memiliki angka migrasi keluar yang lebih **tinggi** dibandingkan migrasi masuk, seperti **Bekasijaya** yang memiliki migrasi masuk sebanyak 5.989 orang tetapi migrasi keluar mencapai 7.336 orang. 
             Hal ini mencerminkan adanya kecenderungan **peningkatan** perpindahan penduduk ke luar wilayah.
             
             Sebaliknya, wilayah dengan cluster **"Penurunan"** menunjukkan angka migrasi masuk yang lebih **rendah** dibandingkan migrasi keluar (angka migrasi keluar suatu wilayah lebih rendah dari wilayah lain), 
             misalnya **Kranji** dengan migrasi keluar sebanyak 5.157 orang terlihat **menurun** dari angka migrasi keluar **Bintara** sebanyak 6.112 orang. 
             Fenomena ini mengindikasikan adanya kecenderungan **berkurangnya** arus migrasi penduduk di wilayah tersebut.
-            """) 
+            """)
+
 
 # Halaman Deskripsi
 if menu == "Deskripsi":
@@ -203,7 +295,7 @@ if menu == "Deskripsi":
     st.markdown("""
     Aplikasi ini digunakan untuk melakukan analisis clustering pada data migrasi.
     Anda dapat melakukan :
-    - Unggah dataset migrasi (.csv).
+    - Unggah dataset migrasi (.csv). Harap unggah dataset yang sudah bersih, lengkap, dan siap diolah.
     - Melakukan preprocessing data (normalisasi).
     - Menentukan jumlah cluster menggunakan Elbow Method.
     - Melihat hasil clustering melalui visualisasi interaktif.
@@ -213,6 +305,9 @@ if menu == "Deskripsi":
 # Halaman Unggah Data
 if menu == "Unggah Data":
     st.header("Unggah Dataset Migrasi")
+    st.markdown("""
+    Harap unggah dataset yang sudah bersih, lengkap, dan siap diolah.
+    """)
     uploaded_file = st.file_uploader("Unggah file dataset (.csv)", type="csv")
 
     if uploaded_file:
@@ -241,7 +336,7 @@ if menu == "Preprocessing":
     
     # Cek apakah dataset sudah diunggah
     if 'df' in st.session_state and st.session_state['df'] is not None:
-        df = st.session_state['df'].copy()  # Copy dataset agar tidak memengaruhi data asli di session_state
+        df = st.session_state['df'].copy()  
 
         # Ambil nama kolom migrasi masuk dan keluar dari session_state
         migrasi_masuk_col = st.session_state.get('migrasi_masuk_col')
@@ -250,7 +345,7 @@ if menu == "Preprocessing":
         if migrasi_masuk_col and migrasi_keluar_col:
             # Normalisasi data
             scaler = MinMaxScaler()
-            X = df[[migrasi_masuk_col, migrasi_keluar_col]]  # Kolom yang dipilih pengguna
+            X = df[[migrasi_masuk_col, migrasi_keluar_col]]  
             X_normalized = scaler.fit_transform(X)
 
             # Simpan hasil normalisasi dan scaler ke session_state
@@ -347,10 +442,10 @@ if menu == "Visualisasi":
         # Loop untuk menampilkan semua centroid
         for i, centroid in enumerate(centroids_denorm):
             ax.scatter(
-                centroid[0],  # Koordinat X denormalisasi
-                centroid[1],  # Koordinat Y denormalisasi
-                marker='*',      # Bentuk marker
-                s=200,           # Ukuran marker
+                centroid[0],  
+                centroid[1],  
+                marker='*',      
+                s=200,           
                 label=f'Centroid Cluster {i}',
                 color=scatter.cmap(i / kmeans.n_clusters)
             )
@@ -361,6 +456,59 @@ if menu == "Visualisasi":
         ax.set_title("Scatter Plot Clustering")
         ax.legend()
         st.pyplot(fig)
+
+        # Area Chart Sebaran Cluster
+        st.subheader("Visualisasi Hasil Clustering Migrasi")
+        
+        # Pastikan kolom cluster berupa string
+        df['cluster'] = df['cluster'].astype(str)
+
+        treemap_fig = px.treemap(
+            df,
+            path=['cluster', 'nama_desa_kelurahan'],  
+            title='Kelurahan Berdasarkan Cluster',
+            color='cluster',
+            labels={
+                'cluster': 'Cluster',
+                'nama_desa_kelurahan': 'Kelurahan'
+            },
+            color_discrete_map={
+                '1': 'purple',        
+                '2': 'mediumturquoise',  
+                '3': 'pink'              
+            }
+        )
+        # Kustomisasi hovertemplate
+        treemap_fig.update_traces(
+            hovertemplate=(
+                "Kelurahan: %{label}<br>"  
+                "Cluster: %{parent}<br>"  
+                "Jumlah: %{value}<extra></extra>"  
+            )
+        )
+        # Tampilkan chart
+        st.plotly_chart(treemap_fig)
+
+        df['cluster'] = df['cluster'].astype(str)
+        # Hitung jumlah kelurahan per cluster
+        cluster_counts = df['cluster'].value_counts().reset_index()
+        cluster_counts.columns = ['Cluster', 'Jumlah Kelurahan']
+
+        # Membuat Pie Chart
+        pie_fig = px.pie(
+            cluster_counts,
+            names='Cluster',
+            values='Jumlah Kelurahan',
+            title='Proporsi Tiap Cluster',
+            color='Cluster',
+            color_discrete_map={
+                '1': 'purple',         
+                '2': 'mediumturquoise',  
+                '3': 'pink'             
+            }
+        )
+        # Tampilkan chart
+        st.plotly_chart(pie_fig)
     else:
         st.error("Data atau model belum tersedia. Silakan lakukan preprocessing dan clustering terlebih dahulu.")
 
